@@ -1,10 +1,5 @@
 #include "BLESerial.h"
 
-static BLESerial& getInstance() {
-  static BLESerial instance; // instantiated on first use, guaranteed to be destroyed
-  return instance;
-}
-
 BLESerial::BLESerial() {
   this->numAvailableLines = 0;
   this->transmitBufferLength = 0;

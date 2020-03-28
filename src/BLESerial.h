@@ -52,7 +52,10 @@ template<size_t N> class ByteRingBuffer {
 class BLESerial {
   public:
     // singleton instance getter
-    static BLESerial& getInstance();
+    static BLESerial& getInstance() {
+      static BLESerial instance; // instantiated on first use, guaranteed to be destroyed
+      return instance;
+    }
 
     // similar to begin(), but also sets up ArduinoBLE for you, which you otherwise have to do manually
     // use this for simplicity, use begin() for flexibility (e.g., more than one service)

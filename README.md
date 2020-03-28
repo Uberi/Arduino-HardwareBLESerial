@@ -3,20 +3,28 @@ BLESerial
 
 An Arduino library for Nordic Semiconductors' proprietary [UART/Serial Port Emulation over BLE](https://infocenter.nordicsemi.com/topic/com.nordic.infocenter.sdk5.v14.0.0/ble_sdk_app_nus_eval.html) protocol, using [ArduinoBLE](https://www.arduino.cc/en/Reference/ArduinoBLE).
 
-Since the BLE standard doesn't include a standard for UART, there are multiple proprietary standards available. Nordic's protocol seems to be the most popular and seems to have the best software support. This library exposes a `Serial`-like interface, but without any of the blocking calls (e.g., `Serial.readBytesUntil`), and supports additional line-oriented features such as `peekLine` and `readLine`.
-
 Features:
 
-* Byte-oriented I/O: `BLESerial::available`, `BLESerial::peek`, `BLESerial::read`, `BLESerial::write`.
-* Line-oriented I/O: `BLESerial::availableLines`, `BLESerial::peekLine`, `BLESerial::readLine`.
-* Flexible printing: `BLESerial::print`, `BLESerial::println` (supports `char *`, `char`, `int64_t`, `uint64_t`, `double`).
+* **Byte-oriented I/O**: `BLESerial::available`, `BLESerial::peek`, `BLESerial::read`, `BLESerial::write`.
+* **Line-oriented I/O**: `BLESerial::availableLines`, `BLESerial::peekLine`, `BLESerial::readLine`.
+* **Flexible printing**: `BLESerial::print`, `BLESerial::println` (supports `char *`, `char`, `int64_t`, `uint64_t`, `double`).
 
-This library requires ArduinoBLE, and should work on all boards that ArduinoBLE works on, such as the Arduino Nano 33 BLE, Arduino Nano 33 IoT, or Arduino MKR WiFi 1010. Most of the testing was done on an Arduino Nano 33 BLE.
+Since the BLE standard doesn't include a standard for UART, there are multiple proprietary standards available. Nordic's protocol seems to be the most popular and seems to have the best software support. This library exposes a `Serial`-like interface, but without any of the blocking calls (e.g., `Serial.readBytesUntil`), and supports additional line-oriented features such as `peekLine` and `readLine`.
+
+Generally speaking, BLE is not designed for UART-style communication, and this will consume more power than a design centered around individual BLE characteristics. However, you may find BLE UART useful for:
+
+* **Wireless logging**: Need to test your robot in the field, but cables getting in the way? View logs and diagnostics in realtime via apps such as Bluefruit LE! Just replace your existing `Serial.println` with `bleSerial.println` and you're 90% done.
+* **Command-line interfaces**: BLESerial works great with [CommandParser](https://github.com/Uberi/Arduino-CommandParser), a commandline parser by yours truly. Check out **Using CommandParser to make a BLE commandline-like interface** in the examples section!
+* **Transferring binary/text data**: BLESerial papers over packet size limits and makes it easy to send large amounts of binary/text data back and forth between devices.
+
+This library requires ArduinoBLE, and should work on all boards that ArduinoBLE works on, such as the **Arduino Nano 33 BLE**, **Arduino Nano 33 IoT**, or **Arduino MKR WiFi 1010**. Most of my testing was done on an Arduino Nano 33 BLE.
 
 Quickstart
 ----------
 
-Example Arduino sketch:
+**NOTE:** BLESerial is not yet in the Arduino Library Manager - I'm currently working on getting it included. For now, install via ZIP file!
+
+Search for "BLESerial" in the Arduino Library Manager, and install it. Now you can try a quick example sketch:
 
 ```cpp
 #include <BLESerial.h>
@@ -25,13 +33,12 @@ BLESerial &bleSerial = BLESerial::getInstance();
 
 void setup() {
   if (!bleSerial.beginAndSetupBLE("Echo")) {
-    while (true); // failed to initialize BLESerial
+    Serial.begin(9600);
+    while (true) {
+      Serial.println("failed to initialize BLESerial!");
+      delay(1000);
+    }
   }
-
-  // wait for a central device to connect
-  while (!bleSerial);
-
-  bleSerial.println("BLESerial device connected!");
 }
 
 void loop() {
@@ -47,10 +54,20 @@ void loop() {
 }
 ```
 
+Download Bluefruit LE Connect on your mobile phone, then connect to your Arduino. 
+
+This sketch demonstrates some differences between BLESerial and Serial:
+
+1. You must obtain a BLESerial instance by calling `BLESerial::getInstance`.
+2. You must initialize your BLESerial instance by calling `BLESerial::beginAndSetupBLE`, which is analogous to `Serial.begin`.
+3. You must call `BLESerial::poll` regularly in order to synchronize state with BLE hardware, unlike `Serial` which does not need polling by the user.
+4. You can use line-oriented methods to read/peek/check input for entire lines at a time. `Serial` has something similar with `Serial.readBytesUntil`, but it is harder to use and also blocks control flow.
+
 More examples:
 
 * [Echo each received line back to the sender](examples/Echo/Echo.ino)
 * [Bridge between BLE UART and hardware serial port](examples/SerialPassthrough/SerialPassthrough.ino)
+* [Using CommandParser to make a BLE commandline-like interface](examples/CommandLine/CommandLine.ino)
 
 Apps for working with BLE UART
 ------------------------------
@@ -59,27 +76,18 @@ Usually you connect to BLE peripherals using a mobile phone or computer. In the 
 
 For BLE UART, you'll usually need a special app that supports interfacing over UART. For iOS devices, here's my review of various available options:
 
-* [Bluefruit LE Connect](https://apps.apple.com/us/app/bluefruit-connect/id830125974): the best UART console I've tried. Scans quickly, connects quickly, and console is decently easy to use. The only complaint would be that each line that you send is truncated to 20 bytes. However, it doesn't support setting up dedicated buttons that send common commands.
+* [Bluefruit LE Connect](https://apps.apple.com/us/app/bluefruit-connect/id830125974): the best UART console I've tried. Scans quickly, connects quickly, and console is decently easy to use. The only complaint would be that each line that you send is truncated to 20 bytes (see note below). However, it doesn't support setting up dedicated buttons that send common commands.
 * [nRF Toolbox](https://apps.apple.com/us/app/nrf-toolbox/id820906058): another app with a UART console, but a bit harder to connect to a peripheral than Bluefruit LE Connect. Does support dedicated buttons for quick access to common commands, which is nice.
 * [LightBlue Explorer](https://apps.apple.com/us/app/lightblue-explorer/id557428110): like BLE Hero, it also only supports managing BLE CHaracteristics, but it is the easiest to use option 
 * [nRF Connect](https://apps.apple.com/us/app/nrf-connect/id1054362403?ls=1): a good choice for managing BLE characteristics, the UI is a little bit unintuitive but it is quite a complete solution. However, it doesn't support UART that well, though in theory you can directly edit the RX/TX characteristics to interface with UART.
 
-These I also tried but didn't find as useful:
+I also tried these but didn't find them as useful:
 
 * [Blue - Bluetooth & developers](https://apps.apple.com/us/app/blue-bluetooth-developers/id1458096008): this does work for managing BLE characteristics, but doesn't have a UART console and overall has less features than nRF Connect, though it is easier to use. However, LightBlue Explorer has a better UI.
 * [BLE Hero](https://apps.apple.com/ca/app/ble-hero/id1013013325): like Blue, it also only supports managing BLE characteristics, but very buggy UI and quite sluggish - refresh often doesn't work. Would not recommend.
 * [BLE Terminal HM-10](https://apps.apple.com/us/app/ble-terminal-hm-10/id1398703795): this actually only supports the Texas Instruments UART protocol, not the Nordic Semiconductor one. Does not work with this library!
 
-One problem with all of the above apps that offer a UART console is that they limit the length of the message you can write to 20 bytes, often silently truncating your message at 20 bytes. The standard way to send messages longer than 20 bytes is to send them in chunks of 20 bytes with a short delay in between, but these apps currently do not implement this.
-
-Resources
----------
-
-This library would not be possible without these excellent resources:
-
-* [Official Nordic Semiconductor page for their UART protocol](https://infocenter.nordicsemi.com/topic/com.nordic.infocenter.sdk5.v14.0.0/ble_sdk_app_nus_eval.html). This had a lot of information about rationale and design considerations.
-* [Kevin Townsend's BLE UART tutorial](https://learn.adafruit.com/introducing-adafruit-ble-bluetooth-low-energy-friend/uart-service). This was a much more digestible version of the Nordic page, making implementation a lot easier.
-* [BLE UART example from the Arduino-BLEPeripheral library](https://github.com/sandeepmistry/arduino-BLEPeripheral/tree/master/examples/serial). This was useful in debugging the resulting library, especially the idea to use a regularly-flushed transmission ring buffer.
+**NOTE:** One problem with all of the above apps that offer a UART console is that they limit the length of the message you can write to 20 bytes, often silently truncating your message at 20 bytes. The standard way to send messages longer than 20 bytes is to send them in chunks of 20 bytes with a short delay in between, but these apps currently do not implement this. As a workaround, I manually send long messages in chunks of 20 bytes.
 
 Reference
 ---------
@@ -200,3 +208,12 @@ while (!bleSerial) {
   delay(100); // on Mbed-based Arduino boards, delay() makes the board enter a low-power sleep mode
 }
 ```
+
+Resources
+---------
+
+This library would not be possible without these excellent resources:
+
+* [Official Nordic Semiconductor page for their UART protocol](https://infocenter.nordicsemi.com/topic/com.nordic.infocenter.sdk5.v14.0.0/ble_sdk_app_nus_eval.html). This had a lot of information about rationale and design considerations.
+* [Kevin Townsend's BLE UART tutorial](https://learn.adafruit.com/introducing-adafruit-ble-bluetooth-low-energy-friend/uart-service). This was a much more digestible version of the Nordic page, making implementation a lot easier.
+* [BLE UART example from the Arduino-BLEPeripheral library](https://github.com/sandeepmistry/arduino-BLEPeripheral/tree/master/examples/serial). This was useful in debugging the resulting library, especially the idea to use a regularly-flushed transmission ring buffer.

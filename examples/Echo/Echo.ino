@@ -4,13 +4,12 @@ BLESerial &bleSerial = BLESerial::getInstance();
 
 void setup() {
   if (!bleSerial.beginAndSetupBLE("Echo")) {
-    while (true); // failed to initialize BLESerial
+    Serial.begin(9600);
+    while (true) {
+      Serial.println("failed to initialize BLESerial!");
+      delay(1000);
+    }
   }
-
-  // wait for a central device to connect
-  while (!bleSerial);
-
-  bleSerial.println("BLESerial device connected!");
 }
 
 void loop() {
