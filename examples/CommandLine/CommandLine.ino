@@ -1,14 +1,14 @@
-#include <BLESerial.h>
+#include <HardwareBLESerial.h>
 #include <CommandParser.h>
 
-// ADVANCED EXAMPLE: demonstration of how BLESerial can work together with CommandParser to provide a commandline interface over BLE (NOTE: requires CommandParser to be installed separately)
+// ADVANCED EXAMPLE: demonstration of how HardwareBLESerial can work together with CommandParser to provide a commandline interface over BLE (NOTE: requires CommandParser to be installed separately)
 
 /////////////
 // Globals //
 /////////////
 
-// BLESerial instance
-BLESerial &bleSerial = BLESerial::getInstance();
+// HardwareBLESerial instance
+HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
 
 // CommandParser instance
 typedef CommandParser<> MyCommandParser;
@@ -47,7 +47,7 @@ void setup() {
 
   if (!bleSerial.beginAndSetupBLE("CommandLine")) {
     while (true) {
-      Serial.println("failed to initialize BLESerial!");
+      Serial.println("failed to initialize HardwareBLESerial!");
       delay(1000);
     }
   }

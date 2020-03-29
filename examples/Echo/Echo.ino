@@ -1,12 +1,12 @@
-#include <BLESerial.h>
+#include <HardwareBLESerial.h>
 
-BLESerial &bleSerial = BLESerial::getInstance();
+HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
 
 void setup() {
   if (!bleSerial.beginAndSetupBLE("Echo")) {
     Serial.begin(9600);
     while (true) {
-      Serial.println("failed to initialize BLESerial!");
+      Serial.println("failed to initialize HardwareBLESerial!");
       delay(1000);
     }
   }

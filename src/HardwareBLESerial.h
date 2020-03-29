@@ -49,11 +49,11 @@ template<size_t N> class ByteRingBuffer {
     size_t getLength() { return length; }
 };
 
-class BLESerial {
+class HardwareBLESerial {
   public:
     // singleton instance getter
-    static BLESerial& getInstance() {
-      static BLESerial instance; // instantiated on first use, guaranteed to be destroyed
+    static HardwareBLESerial& getInstance() {
+      static HardwareBLESerial instance; // instantiated on first use, guaranteed to be destroyed
       return instance;
     }
 
@@ -86,9 +86,9 @@ class BLESerial {
 
     operator bool();
   private:
-    BLESerial();
-    BLESerial(BLESerial const &other) = delete;  // disable copy constructor
-    void operator=(BLESerial const &other) = delete;  // disable assign constructor
+    HardwareBLESerial();
+    HardwareBLESerial(HardwareBLESerial const &other) = delete;  // disable copy constructor
+    void operator=(HardwareBLESerial const &other) = delete;  // disable assign constructor
 
     ByteRingBuffer<BLE_SERIAL_RECEIVE_BUFFER_SIZE> receiveBuffer;
     size_t numAvailableLines;

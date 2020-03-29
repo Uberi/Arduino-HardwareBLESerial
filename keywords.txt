@@ -1,5 +1,5 @@
 # Datatypes (KEYWORD1)
-BLESerial KEYWORD1
+HardwareBLESerial KEYWORD1
 
 # Methods and Functions (KEYWORD2)
 getInstance KEYWORD2

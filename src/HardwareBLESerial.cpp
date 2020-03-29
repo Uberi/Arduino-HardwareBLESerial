@@ -1,12 +1,12 @@
-#include "BLESerial.h"
+#include "HardwareBLESerial.h"
 
-BLESerial::BLESerial() {
+HardwareBLESerial::HardwareBLESerial() {
   this->numAvailableLines = 0;
   this->transmitBufferLength = 0;
   this->lastFlushTime = 0;
 }
 
-bool BLESerial::beginAndSetupBLE(const char *name) {
+bool HardwareBLESerial::beginAndSetupBLE(const char *name) {
   if (!BLE.begin()) { return false; }
   BLE.setLocalName(name);
   BLE.setDeviceName(name);
@@ -15,15 +15,15 @@ bool BLESerial::beginAndSetupBLE(const char *name) {
   return true;
 }
 
-void BLESerial::begin() {
+void HardwareBLESerial::begin() {
   BLE.setAdvertisedService(uartService);
   uartService.addCharacteristic(receiveCharacteristic);
   uartService.addCharacteristic(transmitCharacteristic);
-  receiveCharacteristic.setEventHandler(BLEWritten, BLESerial::onBLEWritten);
+  receiveCharacteristic.setEventHandler(BLEWritten, HardwareBLESerial::onBLEWritten);
   BLE.addService(uartService);
 }
 
-void BLESerial::poll() {
+void HardwareBLESerial::poll() {
   if (millis() - this->lastFlushTime > 100) {
     flush();
   } else {
@@ -31,22 +31,22 @@ void BLESerial::poll() {
   }
 }
 
-void BLESerial::end() {
+void HardwareBLESerial::end() {
   this->receiveCharacteristic.setEventHandler(BLEWritten, NULL);
   this->receiveBuffer.clear();
   flush();
 }
 
-size_t BLESerial::available() {
+size_t HardwareBLESerial::available() {
   return this->receiveBuffer.getLength();
 }
 
-int BLESerial::peek() {
+int HardwareBLESerial::peek() {
   if (this->receiveBuffer.getLength() == 0) return -1;
   return this->receiveBuffer.get(0);
 }
 
-int BLESerial::read() {
+int HardwareBLESerial::read() {
   int result = this->receiveBuffer.pop();
   if (result == (int)'\n') {
     this->numAvailableLines --;
@@ -54,7 +54,7 @@ int BLESerial::read() {
   return result;
 }
 
-size_t BLESerial::write(uint8_t byte) {
+size_t HardwareBLESerial::write(uint8_t byte) {
   if (this->transmitCharacteristic.subscribed() == false) {
     return 0;
   }
@@ -66,7 +66,7 @@ size_t BLESerial::write(uint8_t byte) {
   return 1;
 }
 
-void BLESerial::flush() {
+void HardwareBLESerial::flush() {
   if (this->transmitBufferLength > 0) {
     this->transmitCharacteristic.setValue(this->transmitBuffer, this->transmitBufferLength);
     this->transmitBufferLength = 0;
@@ -75,11 +75,11 @@ void BLESerial::flush() {
   BLE.poll();
 }
 
-size_t BLESerial::availableLines() {
+size_t HardwareBLESerial::availableLines() {
   return this->numAvailableLines;
 }
 
-size_t BLESerial::peekLine(char *buffer, size_t bufferSize) {
+size_t HardwareBLESerial::peekLine(char *buffer, size_t bufferSize) {
   if (this->availableLines() == 0) {
     buffer[0] = '\0';
     return 0;
@@ -97,7 +97,7 @@ size_t BLESerial::peekLine(char *buffer, size_t bufferSize) {
   return i;
 }
 
-size_t BLESerial::readLine(char *buffer, size_t bufferSize) {
+size_t HardwareBLESerial::readLine(char *buffer, size_t bufferSize) {
   if (this->availableLines() == 0) {
     buffer[0] = '\0';
     return 0;
@@ -115,7 +115,7 @@ size_t BLESerial::readLine(char *buffer, size_t bufferSize) {
   return i;
 }
 
-size_t BLESerial::print(const char *str) {
+size_t HardwareBLESerial::print(const char *str) {
   if (this->transmitCharacteristic.subscribed() == false) {
     return 0;
   }
@@ -125,37 +125,37 @@ size_t BLESerial::print(const char *str) {
   }
   return written;
 }
-size_t BLESerial::println(const char *str) { return this->print(str) + this->write('\n'); }
+size_t HardwareBLESerial::println(const char *str) { return this->print(str) + this->write('\n'); }
 
-size_t BLESerial::print(char value) {
+size_t HardwareBLESerial::print(char value) {
   char buf[2] = { value, '\0' };
   return this->print(buf);
 }
-size_t BLESerial::println(char value) { return this->print(value) + this->write('\n'); }
+size_t HardwareBLESerial::println(char value) { return this->print(value) + this->write('\n'); }
 
-size_t BLESerial::print(int64_t value) {
+size_t HardwareBLESerial::print(int64_t value) {
   char buf[21]; snprintf(buf, 21, "%lld", value); // the longest representation of a uint64_t is for -2^63, 20 characters plus null terminator
   return this->print(buf);
 }
-size_t BLESerial::println(int64_t value) { return this->print(value) + this->write('\n'); }
+size_t HardwareBLESerial::println(int64_t value) { return this->print(value) + this->write('\n'); }
 
-size_t BLESerial::print(uint64_t value) {
+size_t HardwareBLESerial::print(uint64_t value) {
   char buf[21]; snprintf(buf, 21, "%llu", value);  // the longest representation of a uint64_t is for 2^64-1, 20 characters plus null terminator
   return this->print(buf);
 }
-size_t BLESerial::println(uint64_t value) { return this->print(value) + this->write('\n'); }
+size_t HardwareBLESerial::println(uint64_t value) { return this->print(value) + this->write('\n'); }
 
-size_t BLESerial::print(double value) {
+size_t HardwareBLESerial::print(double value) {
   char buf[319]; snprintf(buf, 319, "%f", value); // the longest representation of a double is for -1e308, 318 characters plus null terminator
   return this->print(buf);
 }
-size_t BLESerial::println(double value) { return this->print(value) + this->write('\n'); }
+size_t HardwareBLESerial::println(double value) { return this->print(value) + this->write('\n'); }
 
-BLESerial::operator bool() {
+HardwareBLESerial::operator bool() {
   return BLE.connected();
 }
 
-void BLESerial::onReceive(const uint8_t* data, size_t size) {
+void HardwareBLESerial::onReceive(const uint8_t* data, size_t size) {
   for (size_t i = 0; i < min(size, sizeof(this->receiveBuffer)); i++) {
     this->receiveBuffer.add(data[i]);
     if (data[i] == '\n') {
@@ -164,6 +164,6 @@ void BLESerial::onReceive(const uint8_t* data, size_t size) {
   }
 }
 
-void BLESerial::onBLEWritten(BLEDevice central, BLECharacteristic characteristic) {
-  BLESerial::getInstance().onReceive(characteristic.value(), characteristic.valueLength());
+void HardwareBLESerial::onBLEWritten(BLEDevice central, BLECharacteristic characteristic) {
+  HardwareBLESerial::getInstance().onReceive(characteristic.value(), characteristic.valueLength());
 }

@@ -1,6 +1,6 @@
-#include <BLESerial.h>
+#include <HardwareBLESerial.h>
 
-BLESerial &bleSerial = BLESerial::getInstance();
+HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
 
 void setup() {
   Serial.begin(9600);
@@ -8,7 +8,7 @@ void setup() {
 
   if (!bleSerial.beginAndSetupBLE("SerialPassthrough")) {
     while (true) {
-      Serial.println("failed to initialize BLESerial!");
+      Serial.println("failed to initialize HardwareBLESerial!");
       delay(1000);
     }
   }
@@ -16,7 +16,7 @@ void setup() {
   // wait for a central device to connect
   while (!bleSerial);
 
-  Serial.println("BLESerial device connected!");
+  Serial.println("HardwareBLESerial central device connected!");
 }
 
 void loop() {
