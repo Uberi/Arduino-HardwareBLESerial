@@ -22,8 +22,6 @@ This library requires ArduinoBLE, and should work on all boards that ArduinoBLE 
 Quickstart
 ----------
 
-**NOTE:** HardwareBLESerial is not yet in the Arduino Library Manager - I'm currently working on getting it included. For now, install via ZIP file!
-
 Search for "HardwareBLESerial" in the Arduino Library Manager, and install it. Now you can try a quick example sketch:
 
 ```cpp
@@ -76,7 +74,7 @@ Usually you connect to BLE peripherals using a mobile phone or computer. In the 
 
 For BLE UART, you'll usually need a special app that supports interfacing over UART. For iOS devices, here's my review of various available options:
 
-* [Bluefruit LE Connect](https://apps.apple.com/us/app/bluefruit-connect/id830125974): the best UART console I've tried. Scans quickly, connects quickly, and console is decently easy to use. The only complaint would be that each line that you send is truncated to 20 bytes (see note below). However, it doesn't support setting up dedicated buttons that send common commands.
+* [Bluefruit LE Connect](https://apps.apple.com/us/app/bluefruit-connect/id830125974): the best UART console I've tried. Scans quickly, connects quickly, and console is decently easy to use. However, it doesn't support setting up dedicated buttons that send common commands.
 * [nRF Toolbox](https://apps.apple.com/us/app/nrf-toolbox/id820906058): another app with a UART console, but a bit harder to connect to a peripheral than Bluefruit LE Connect. Does support dedicated buttons for quick access to common commands, which is nice.
 * [LightBlue Explorer](https://apps.apple.com/us/app/lightblue-explorer/id557428110): like BLE Hero, it also only supports managing BLE CHaracteristics, but it is the easiest to use option 
 * [nRF Connect](https://apps.apple.com/us/app/nrf-connect/id1054362403?ls=1): a good choice for managing BLE characteristics, the UI is a little bit unintuitive but it is quite a complete solution. However, it doesn't support UART that well, though in theory you can directly edit the RX/TX characteristics to interface with UART.
@@ -87,7 +85,7 @@ I also tried these but didn't find them as useful:
 * [BLE Hero](https://apps.apple.com/ca/app/ble-hero/id1013013325): like Blue, it also only supports managing BLE characteristics, but very buggy UI and quite sluggish - refresh often doesn't work. Would not recommend.
 * [BLE Terminal HM-10](https://apps.apple.com/us/app/ble-terminal-hm-10/id1398703795): this actually only supports the Texas Instruments UART protocol, not the Nordic Semiconductor one. Does not work with this library!
 
-**NOTE:** One problem with all of the above apps that offer a UART console is that they limit the length of the message you can write to 20 bytes, often silently truncating your message at 20 bytes. The standard way to send messages longer than 20 bytes is to send them in chunks of 20 bytes with a short delay in between, but these apps currently do not implement this. As a workaround, I manually send long messages in chunks of 20 bytes.
+**NOTE:** One problem with all of the above apps that offer a UART console is that they limit the length of the message you can write to 20 bytes, often silently truncating your message at 20 bytes. Usually, you would want ArduinoBLE to increase the MTU, to allow the board to receive messages up to 512 bytes in size. However, since ArduinoBLE doesn't allow increasing the MTU (even the internal `ATTClass::setMaxMtu` method doesn't seem to do anything), the other standard way to send longer messages is to send them in chunks with a short delay in between. However, the apps above do not seem to support this. As a workaround, I manually send long messages in chunks of 20 bytes within Bluefruit LE Connect.
 
 Reference
 ---------
