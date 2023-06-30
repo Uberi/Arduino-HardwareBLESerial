@@ -12,7 +12,16 @@ Tested using UART console feature in [Adafruit Bluefruit LE Connect](https://app
 #define __BLE_SERIAL_H__
 
 #include <Arduino.h>
-#include <ArduinoBLE.h>
+
+//// Thijs addition/change:
+#ifdef ARDUINO_ARCH_STM32 // NOTE: this may not be as all-inclusive as it should. Works fine for me right now though ;)
+  // #include "app_conf_custom.h" // should be done in main.cpp instead (before importing this library)
+  #include <STM32duinoBLE.h>
+  //// NOTE: some initialization (for compability with ArduinoBLE classes) was also added to the .cpp file
+#else
+  #include <ArduinoBLE.h>
+#endif
+//// end of Thijs addition/change
 
 #define BLE_ATTRIBUTE_MAX_VALUE_LENGTH 20
 #define BLE_SERIAL_RECEIVE_BUFFER_SIZE 256
@@ -49,47 +58,32 @@ template<size_t N> class ByteRingBuffer {
     size_t getLength() { return length; }
 };
 
-class HardwareBLESerial {
+class _HardwareBLESerialBase : public Print {
   public:
-    // singleton instance getter
-    static HardwareBLESerial& getInstance() {
-      static HardwareBLESerial instance; // instantiated on first use, guaranteed to be destroyed
-      return instance;
-    }
-
-    // similar to begin(), but also sets up ArduinoBLE for you, which you otherwise have to do manually
-    // use this for simplicity, use begin() for flexibility (e.g., more than one service)
-    bool beginAndSetupBLE(const char *name);
-
-    void begin();
     void poll();
     void end();
     size_t available();
     int peek();
     int read();
+    virtual bool _transmitReady() = 0;
     size_t write(uint8_t byte);
-    void flush();
+    using Print::write; // pull in write(str) from Print
+    size_t write(uint8_t* buffer, size_t size);
+    virtual void flush() = 0;
 
     size_t availableLines();
     size_t peekLine(char *buffer, size_t bufferSize);
     size_t readLine(char *buffer, size_t bufferSize);
-    size_t print(const char *value);
-    size_t println(const char *value);
-    size_t print(char value);
-    size_t println(char value);
-    size_t print(int64_t value);
-    size_t println(int64_t value);
-    size_t print(uint64_t value);
-    size_t println(uint64_t value);
-    size_t print(double value);
-    size_t println(double value);
 
     operator bool();
-  private:
-    HardwareBLESerial();
-    HardwareBLESerial(HardwareBLESerial const &other) = delete;  // disable copy constructor
-    void operator=(HardwareBLESerial const &other) = delete;  // disable assign constructor
 
+    _HardwareBLESerialBase();
+    _HardwareBLESerialBase(_HardwareBLESerialBase const &other) = delete;  // disable copy constructor
+    void operator=(_HardwareBLESerialBase const &other) = delete;  // disable assign constructor
+
+    virtual ~_HardwareBLESerialBase() {} // empty deconstructor (to fix compiler complaints about vtable)
+
+  protected:
     ByteRingBuffer<BLE_SERIAL_RECEIVE_BUFFER_SIZE> receiveBuffer;
     size_t numAvailableLines;
 
@@ -97,12 +91,68 @@ class HardwareBLESerial {
     size_t transmitBufferLength;
     uint8_t transmitBuffer[BLE_ATTRIBUTE_MAX_VALUE_LENGTH];
 
+    // virtual BLECharacteristic receiveCharacteristic;
+    // virtual BLECharacteristic transmitCharacteristic;
+
+    void onReceive(const uint8_t* data, size_t size);
+};
+
+/////////////////////////////////////////////////////////////////////////// slave (default) specific: ///////////////////////////////////////////
+
+class HardwareBLESerial : public _HardwareBLESerialBase {
+  public:
+    // singleton instance getter
+    static HardwareBLESerial& getInstance() {
+      static HardwareBLESerial instance; // instantiated on first use, guaranteed to be destroyed
+      return instance;
+    }
+    // using _HardwareBLESerialBase::_HardwareBLESerialBase; // inherit constructor
+
+    // similar to begin(), but also sets up ArduinoBLE for you, which you otherwise have to do manually
+    // use this for simplicity, use begin() for flexibility (e.g., more than one service)
+    bool beginAndSetupBLE(const char *name);
+    void begin();
+    void end();
+    bool _transmitReady();
+    void flush();
+  private:
+    static void onBLEWritten(BLEDevice central, BLECharacteristic characteristic); // i couldn't figure out how to put this in the base class without compiler complaints
+
     BLEService uartService = BLEService("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
     BLECharacteristic receiveCharacteristic = BLECharacteristic("6E400002-B5A3-F393-E0A9-E50E24DCCA9E", BLEWriteWithoutResponse, BLE_ATTRIBUTE_MAX_VALUE_LENGTH);
     BLECharacteristic transmitCharacteristic = BLECharacteristic("6E400003-B5A3-F393-E0A9-E50E24DCCA9E", BLENotify, BLE_ATTRIBUTE_MAX_VALUE_LENGTH);
+};
 
-    void onReceive(const uint8_t* data, size_t size);
-    static void onBLEWritten(BLEDevice central, BLECharacteristic characteristic);
+/////////////////////////////////////////////////////////////////////////// host specific: ///////////////////////////////////////////
+
+class HardwareBLESerialHost : public _HardwareBLESerialBase {
+  public:
+    // singleton instance getter
+    static HardwareBLESerialHost& getInstance() {
+      static HardwareBLESerialHost instance; // instantiated on first use, guaranteed to be destroyed
+      return instance;
+    }
+    // using _HardwareBLESerialBase::_HardwareBLESerialBase; // inherit constructor
+
+    // similar to begin(), but also sets up ArduinoBLE for you, which you otherwise have to do manually
+    // use this for simplicity, use begin() for flexibility (e.g., more than one service)
+    bool beginAndSetupBLE(const char *name);
+
+    // volatile bool autoReconnect = false; // TODO
+    bool tryConnect();
+    bool _initConnection();
+
+    void end();
+    bool _transmitReady();
+    void flush();
+  // private:
+    static void onBLEWritten(BLEDevice periph, BLECharacteristic characteristic); // i couldn't figure out how to put this in the base class without compiler complaints
+
+    BLEDevice peripheral; // the counterpart device
+    volatile bool _wasConnected = false;
+
+    BLECharacteristic receiveCharacteristic;
+    BLECharacteristic transmitCharacteristic;
 };
 
 #endif
