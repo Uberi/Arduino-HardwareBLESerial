@@ -1,5 +1,21 @@
 #include "HardwareBLESerial.h"
 
+//// Thijs addition:
+#ifdef ARDUINO_ARCH_STM32 // NOTE: this may not be as all-inclusive as it should. Works fine for me right now though ;)
+  #if defined(ARDUINO_NUCLEO_WB15CC) || defined(ARDUINO_P_NUCLEO_WB55RG) || defined(ARDUINO_STM32WB5MM_DK) // just an extra check (for my foolish future-self)
+    HCISharedMemTransportClass HCISharedMemTransport;
+    #if !defined(FAKE_BLELOCALDEVICE)
+      BLELocalDevice BLEObj(&HCISharedMemTransport);
+      BLELocalDevice& BLE = BLEObj; // this is a slight hack, to make the library happy. It's presumably a remnant of the ArduinoBLE library origins
+    #endif
+  #else
+    #error("other STM32 BLE devices (or any devices included the STM32duinoBLE library) are not yet setup in the HardwareBLESerial library.\
+            Please consult the STM32duinoBLE library for the proper setup config")
+  #endif
+#else
+#endif
+//// end of Thijs addition
+
 HardwareBLESerial::HardwareBLESerial() {
   this->numAvailableLines = 0;
   this->transmitBufferLength = 0;

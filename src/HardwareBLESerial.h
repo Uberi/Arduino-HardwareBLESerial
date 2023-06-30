@@ -12,7 +12,16 @@ Tested using UART console feature in [Adafruit Bluefruit LE Connect](https://app
 #define __BLE_SERIAL_H__
 
 #include <Arduino.h>
-#include <ArduinoBLE.h>
+
+//// Thijs addition/change:
+#ifdef ARDUINO_ARCH_STM32 // NOTE: this may not be as all-inclusive as it should. Works fine for me right now though ;)
+  // #include "app_conf_custom.h" // should be done in main.cpp instead (before importing this library)
+  #include <STM32duinoBLE.h>
+  //// NOTE: some initialization (for compability with ArduinoBLE classes) was also added to the .cpp file
+#else
+  #include <ArduinoBLE.h>
+#endif
+//// end of Thijs addition/change
 
 #define BLE_ATTRIBUTE_MAX_VALUE_LENGTH 20
 #define BLE_SERIAL_RECEIVE_BUFFER_SIZE 256
