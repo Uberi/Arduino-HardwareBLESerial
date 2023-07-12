@@ -29,6 +29,7 @@ void _HardwareBLESerialBase::poll() {
 }
 
 void _HardwareBLESerialBase::end() {
+  this->receiveCharacteristic.setEventHandler(BLEWritten, NULL);
   this->receiveBuffer.clear();
   flush();
 }
@@ -73,6 +74,15 @@ size_t _HardwareBLESerialBase::write(uint8_t* buffer, size_t size) { // Thijs ad
     if (this->transmitBufferLength == sizeof(this->transmitBuffer)) { flush(); } // the extra if-statement here just avoids an extra flush of a partially filled buffer
   }
   return(written);
+}
+
+void _HardwareBLESerialBase::flush() {
+  if (this->transmitBufferLength > 0) {
+    this->transmitCharacteristic.setValue(this->transmitBuffer, this->transmitBufferLength);
+    this->transmitBufferLength = 0;
+  }
+  this->lastFlushTime = millis();
+  BLE.poll();
 }
 
 size_t _HardwareBLESerialBase::availableLines() {
@@ -128,7 +138,6 @@ void _HardwareBLESerialBase::onReceive(const uint8_t* data, size_t size) {
   }
 }
 
-
 /////////////////////////////////////////////////////////////////////////// slave (default) specific: ///////////////////////////////////////////
 
 bool HardwareBLESerial::beginAndSetupBLE(const char *name) {
@@ -148,21 +157,7 @@ void HardwareBLESerial::begin() {
   BLE.addService(uartService);
 }
 
-void HardwareBLESerial::end() {
-  this->receiveCharacteristic.setEventHandler(BLEWritten, NULL);
-  _HardwareBLESerialBase::end();
-}
-
 bool HardwareBLESerial::_transmitReady() { return(this->transmitCharacteristic.subscribed()); }
-
-void HardwareBLESerial::flush() {
-  if (this->transmitBufferLength > 0) {
-    this->transmitCharacteristic.setValue(this->transmitBuffer, this->transmitBufferLength);
-    this->transmitBufferLength = 0;
-  }
-  this->lastFlushTime = millis();
-  BLE.poll();
-}
 
 void HardwareBLESerial::onBLEWritten(BLEDevice central, BLECharacteristic characteristic) {
   HardwareBLESerial::getInstance().onReceive(characteristic.value(), characteristic.valueLength());
@@ -174,31 +169,12 @@ bool HardwareBLESerialHost::beginAndSetupBLE(const char *name) {
   if (!BLE.begin()) { return false; }
   BLE.setLocalName(name);
   BLE.setDeviceName(name);
-  BLE.scanForUuid("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // start looking for BLE devices that advertise the UART service
+  BLE.setEventHandler(BLEDiscovered, HardwareBLESerialHost::onBLEDiscovered);
+  BLE.setEventHandler(BLEDisconnected, HardwareBLESerialHost::onBLEDisconnected);
+  // BLE.setEventHandler(BLEConnected, HardwareBLESerialHost::onBLEConnected);
+  BLE.scanForUuid(uartService_UUID); // start looking for BLE devices that advertise the UART service
   return true;
-  //// TODO:
-  // BLE.setEventHandler(BLEDiscovered, HardwareBLESerialHost::_tryConnect);
-  // BLE.setEventHandler(BLEConnected, HardwareBLESerialHost::_tryConnect);
-  // BLE.setEventHandler(BLEDisconnected, HardwareBLESerialHost::_tryConnect); // (BLEDeviceEvent event, BLEDeviceEventHandler eventHandler)
 }
-
-bool HardwareBLESerialHost::tryConnect() {
-  if(!BLE.connected()) { // if you're already connected, just do nothing
-    if(this->_wasConnected) {
-      this->_wasConnected = false; // only do this once
-      BLE.scanForUuid("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // start looking for a peripheral again
-      Serial.println("debug disconnected");
-    }
-    this->peripheral = BLE.available();
-    if(this->peripheral) {
-      BLE.stopScan(); // stop looking once a peripheral is found
-      if(_initConnection()) { this->_wasConnected = true; } // try to initialize connection with peripheral
-      else { BLE.scanForUuid("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); } // start looking for a peripheral again
-    }
-  }
-  return(BLE.connected());
-}
-
 
 // void printPeripheralStats(BLEDevice peripheral) { // debug
 //   if(!peripheral.connected()) { Serial.println("perihperal not connected"); return; }
@@ -239,42 +215,46 @@ bool HardwareBLESerialHost::tryConnect() {
 //   // }
 // }
 
-
-bool HardwareBLESerialHost::_initConnection() {
-  if(!this->peripheral.connect()) { return(false); } // try connection
-  if(!this->peripheral.discoverAttributes()) { return(false); } // try attribute discovery
+bool HardwareBLESerialHost::_initConnection(BLEDevice periph) {
+  this->peripheral = periph;
+  if(!this->peripheral.connect()) { Serial.println("debug never connected"); BLE.scanForUuid(uartService_UUID); return(false); } // try connection (NOTE: subject to debugging)
+  if(!this->peripheral.discoverAttributes()) { this->peripheral.disconnect(); return(false); } // try attribute discovery
   // printPeripheralStats(this->peripheral); // debug
-  // if(!this->peripheral.hasService("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")) { return(false); } // check if it has the attribute (it must, because of the way the scanning works)
-  // BLEService uartService = this->peripheral.service("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // temporary object, just for checking whether it has the characteristics
-  // if(!uartService.hasCharacteristic("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")) { return(false); } // check if it has a receiveCharacteristic
-  this->transmitCharacteristic = this->peripheral.characteristic("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"); // the slave's receive is this object's transmit
-  if(!this->transmitCharacteristic) { return(false); } // check if characteristic was retrieved
-  if(!this->transmitCharacteristic.canWrite()) { return(false); } // check if the characteristic has the right properties
-  // if(!uartService.hasCharacteristic("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")) { return(false); } // check if it has a transmitCharacteristic
-  this->receiveCharacteristic = this->peripheral.characteristic("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"); // the slave's transmit is this object's receive
-  if(!this->receiveCharacteristic) { return(false); } // check if characteristic was retrieved
-  if(!this->receiveCharacteristic.canSubscribe()) { return(false); } // check if the characteristic has the right properties
-  if(!this->receiveCharacteristic.subscribe()) { return(false); } // try subscribe (Note: does not appear to be stricly necessary)
+  // //// verify whether it has the right services and characteristics (before retrieving them)
+  // if(!this->peripheral.hasService(uartService_UUID)) { this->peripheral.disconnect(); return(false); } // check if it has the attribute (it must, because of the way the scanning works)
+  // BLEService uartService = this->peripheral.service(uartService_UUID); // temporary object, just for checking whether it has the characteristics
+  // if(!uartService.hasCharacteristic(receiveCharacteristic_UUID)) { this->peripheral.disconnect(); return(false); } // check if it has a receiveCharacteristic
+  // if(!uartService.hasCharacteristic(transmitCharacteristic_UUID)) { this->peripheral.disconnect(); return(false); } // check if it has a transmitCharacteristic
+  //// retrieve characteristics and validate them
+  this->transmitCharacteristic = this->peripheral.characteristic(receiveCharacteristic_UUID); // the slave's receive is this object's transmit
+  if(!this->transmitCharacteristic) { this->peripheral.disconnect(); return(false); } // check if characteristic was retrieved
+  if(!this->transmitCharacteristic.canWrite()) { this->peripheral.disconnect(); return(false); } // check if the characteristic has the right properties
+  this->receiveCharacteristic = this->peripheral.characteristic(transmitCharacteristic_UUID); // the slave's transmit is this object's receive
+  if(!this->receiveCharacteristic) { this->peripheral.disconnect(); return(false); } // check if characteristic was retrieved
+  if(!this->receiveCharacteristic.canSubscribe()) { this->peripheral.disconnect(); return(false); } // check if the characteristic has the right properties
+  //// initialize the receive side
+  if(!this->receiveCharacteristic.subscribe()) { this->peripheral.disconnect(); return(false); } // try subscribe (Note: does not appear to be stricly necessary)
   this->receiveCharacteristic.setEventHandler(BLEWritten, HardwareBLESerialHost::onBLEWritten); // set the ISR
   return(this->peripheral.connected()); // if it made it here, the the connection is good
 }
 
-void HardwareBLESerialHost::end() {
-  this->receiveCharacteristic.setEventHandler(BLEWritten, NULL);
-  _HardwareBLESerialBase::end();
-}
-
-bool HardwareBLESerialHost::_transmitReady() { return(BLE.connected()); } // always true???? (no need to subscribe)
-
-void HardwareBLESerialHost::flush() {
-  if (this->transmitBufferLength > 0) {
-    this->transmitCharacteristic.setValue(this->transmitBuffer, this->transmitBufferLength);
-    this->transmitBufferLength = 0;
-  }
-  this->lastFlushTime = millis();
-  BLE.poll();
-}
+bool HardwareBLESerialHost::_transmitReady() { return(BLE.connected()); } // usually true (no subscription status to check at least)
 
 void HardwareBLESerialHost::onBLEWritten(BLEDevice periph, BLECharacteristic characteristic) {
   HardwareBLESerialHost::getInstance().onReceive(characteristic.value(), characteristic.valueLength());
 }
+
+void HardwareBLESerialHost::onBLEDiscovered(BLEDevice periph) {
+  BLE.stopScan(); // stop looking once a peripheral is found
+  HardwareBLESerialHost::getInstance()._initConnection(periph); // try to initialize connection with peripheral (and if it fails, it will call)
+  //// NOTE: if _initConnection() fails, onBLEDisconnected() will be called and scanning will restart
+}
+
+void HardwareBLESerialHost::onBLEDisconnected(BLEDevice periph) {
+  BLE.scanForUuid(uartService_UUID); // start looking for a peripheral again
+  Serial.println("debug disconnected");
+}
+
+// void HardwareBLESerialHost::onBLEConnected(BLEDevice periph) { // not needed (for now?)
+//   HardwareBLESerialHost::getInstance().
+// }
