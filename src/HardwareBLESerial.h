@@ -13,6 +13,7 @@ I used the Arduino Print class as a base (removing the manual implementations of
 I added a host class to enable communication between microcontrollers (tested on STM32WB55's using the STM32duinoBLE library) (Note: the base-class implementation is not the cleanest)
 (I updated the SerialPassthrough example to include the new host class)
 TODO:
+- find out why I2C crashes the BLE connection on STM32WB55 (i sincerely doubt it's related to this library)
 - selecting which peripheral to connect to when playing host (instead of just selecting the first one found)
 - multiple peripherals (multiple serials) in host mode???? (not sure whether it's possible, but it sounds fun)
 - cleaner code (the base class could be cleaner)
