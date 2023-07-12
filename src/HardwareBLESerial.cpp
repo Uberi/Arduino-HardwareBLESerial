@@ -217,7 +217,7 @@ bool HardwareBLESerialHost::beginAndSetupBLE(const char *name) {
 
 bool HardwareBLESerialHost::_initConnection(BLEDevice periph) {
   this->peripheral = periph;
-  if(!this->peripheral.connect()) { Serial.println("debug never connected"); BLE.scanForUuid(uartService_UUID); return(false); } // try connection (NOTE: subject to debugging)
+  if(!this->peripheral.connect()) { /* Serial.println("debug never connected"); */ BLE.scanForUuid(uartService_UUID); return(false); } // try connection (NOTE: subject to debugging)
   if(!this->peripheral.discoverAttributes()) { this->peripheral.disconnect(); return(false); } // try attribute discovery
   // printPeripheralStats(this->peripheral); // debug
   // //// verify whether it has the right services and characteristics (before retrieving them)
@@ -252,7 +252,7 @@ void HardwareBLESerialHost::onBLEDiscovered(BLEDevice periph) {
 
 void HardwareBLESerialHost::onBLEDisconnected(BLEDevice periph) {
   BLE.scanForUuid(uartService_UUID); // start looking for a peripheral again
-  Serial.println("debug disconnected");
+  // Serial.println("debug disconnected"); // see "debug never connected" (i want to see whether the Disconnect eventHandler is called if connect() fails)
 }
 
 // void HardwareBLESerialHost::onBLEConnected(BLEDevice periph) { // not needed (for now?)

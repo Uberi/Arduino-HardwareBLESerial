@@ -1,6 +1,14 @@
 #include <HardwareBLESerial.h>
 
-HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
+// #define PLAY_HOST // if defined, this STM will act as BLE host (central) and look for a counterpart (peripheral) to connect to
+
+#ifdef PLAY_HOST
+  HardwareBLESerialHost &bleSerial = HardwareBLESerialHost::getInstance();
+#else
+  HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
+#endif
+
+bool wasConnected = false; // for debugging
 
 void setup() {
   Serial.begin(9600);
@@ -20,16 +28,27 @@ void setup() {
 }
 
 void loop() {
-  // this must be called regularly to perform BLE updates
-  bleSerial.poll();
+  if(bleSerial) {
+    if(!wasConnected) {
+      wasConnected=true; // only do this once
+      Serial.print("connected! to: ");
+      #ifdef PLAY_HOST
+        Serial.println(bleSerial.peripheral.address());
+      #else
+        Serial.println(BLE.central().address());
+      #endif
+    }
+    // this must be called regularly to perform BLE updates
+    bleSerial.poll();
 
-  // whatever is written to BLE UART appears in the Serial Monitor
-  while (bleSerial.available() > 0) {
-    Serial.write(bleSerial.read());
-  }
+    // whatever is written to BLE UART appears in the Serial Monitor
+    while (bleSerial.available() > 0) {
+      Serial.write(bleSerial.read());
+    }
 
-  // whatever is written in Serial Monitor appears in BLE UART
-  while (Serial.available() > 0) {
-    bleSerial.write(Serial.read());
-  }
+    // whatever is written in Serial Monitor appears in BLE UART
+    while (Serial.available() > 0) {
+      bleSerial.write(Serial.read());
+    }
+  } else if(wasConnected) { wasConnected=false; Serial.println("disconnected!"); } // indicate disconnection
 }

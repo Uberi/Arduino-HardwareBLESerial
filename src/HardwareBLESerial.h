@@ -11,6 +11,7 @@ modified by Thijs van Liempd in July of 2023
 I added STM32 compatibility (using the STM32duinoBLE library, which is function-compatible, so it's a very minor change)
 I used the Arduino Print class as a base (removing the manual implementations of print() and adding a write(buf,len) function) and changed a few things
 I added a host class to enable communication between microcontrollers (tested on STM32WB55's using the STM32duinoBLE library) (Note: the base-class implementation is not the cleanest)
+(I updated the SerialPassthrough example to include the new host class)
 TODO:
 - selecting which peripheral to connect to when playing host (instead of just selecting the first one found)
 - multiple peripherals (multiple serials) in host mode???? (not sure whether it's possible, but it sounds fun)
@@ -76,7 +77,6 @@ class _HardwareBLESerialBase : public Print {
     size_t available();
     int peek();
     int read();
-    virtual bool _transmitReady() = 0;
     size_t write(uint8_t byte);
     using Print::write; // pull in write(str) from Print
     size_t write(uint8_t* buffer, size_t size);
@@ -102,9 +102,7 @@ class _HardwareBLESerialBase : public Print {
     size_t transmitBufferLength;
     uint8_t transmitBuffer[BLE_ATTRIBUTE_MAX_VALUE_LENGTH];
 
-    // virtual BLECharacteristic receiveCharacteristic;
-    // virtual BLECharacteristic transmitCharacteristic;
-
+    virtual bool _transmitReady() = 0;
     void onReceive(const uint8_t* data, size_t size);
 
     BLECharacteristic receiveCharacteristic = BLECharacteristic(receiveCharacteristic_UUID, BLEWriteWithoutResponse, BLE_ATTRIBUTE_MAX_VALUE_LENGTH);
@@ -125,8 +123,8 @@ class HardwareBLESerial : public _HardwareBLESerialBase {
     // use this for simplicity, use begin() for flexibility (e.g., more than one service)
     bool beginAndSetupBLE(const char *name);
     void begin();
-    bool _transmitReady();
   private:
+    bool _transmitReady(); // checks whether central is subscribed to transmitCharacteristic
     static void onBLEWritten(BLEDevice central, BLECharacteristic characteristic); // i couldn't figure out how to put this in the base class without compiler complaints
 
     BLEService uartService = BLEService(uartService_UUID);
@@ -146,15 +144,15 @@ class HardwareBLESerialHost : public _HardwareBLESerialBase {
     // the only begin function (for now?). It may be possible to do multiple things as a central device, but i am weary of getting into those weeds
     bool beginAndSetupBLE(const char *name);
     // begin() was removed (for now?)
-
-    bool _initConnection(BLEDevice periph); // called when a device is discovered
-    bool _transmitReady(); // returns connection status instead of subscription status
-
+    
     // String peripheralAddress() { return(peripheral.address()); } // if the peripheral member below is private/protected, give the user access to the MAC address at least
   // protected: // nah, i think the user should have access (to retrieve stuff like MAC addresses and such)
     BLEDevice peripheral; // the counterpart device
 
    private:
+    bool _initConnection(BLEDevice periph); // called when a device is discovered
+    bool _transmitReady(); // returns connection status instead of subscription status
+
     static void onBLEWritten(BLEDevice periph, BLECharacteristic characteristic); // same as original class (but couldn't be part of base class)
     static void onBLEDiscovered(BLEDevice periph); // when a device is found (through scanning) it will automatically connect
     static void onBLEDisconnected(BLEDevice periph); // when the peripheral is disconnected, start scanning again
