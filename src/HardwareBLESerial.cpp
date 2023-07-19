@@ -66,6 +66,22 @@ size_t HardwareBLESerial::write(uint8_t byte) {
   return 1;
 }
 
+size_t HardwareBLESerial::write_buf(uint8_t* bytes, size_t len) {
+  if (this->transmitCharacteristic.subscribed() == false) {
+    return 0;
+  }
+  // start by clearing the transmit buffer
+  this->transmitBufferLength = 0;
+  memset(this->transmitBuffer, 0, sizeof(this->transmitBuffer));
+
+  // copy the bytes to the transmit buffer
+  const auto dataLen {min(len, sizeof(this->transmitBuffer))};
+  memcpy(this->transmitBuffer, bytes, dataLen);
+  this->transmitBufferLength = dataLen;
+  flush();
+  return 1;
+}
+
 void HardwareBLESerial::flush() {
   if (this->transmitBufferLength > 0) {
     this->transmitCharacteristic.setValue(this->transmitBuffer, this->transmitBufferLength);
