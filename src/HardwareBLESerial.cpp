@@ -70,9 +70,11 @@ size_t HardwareBLESerial::write_buf(uint8_t* bytes, size_t len) {
   if (this->transmitCharacteristic.subscribed() == false) {
     return 0;
   }
-  // start by clearing the transmit buffer
-  this->transmitBufferLength = 0;
-  memset(this->transmitBuffer, 0, sizeof(this->transmitBuffer));
+
+  // the transmit buffer is not empty, flush it
+  if (this->transmitBufferLength > 0) {
+    flush();
+  }
 
   // copy the bytes to the transmit buffer
   const auto dataLen {min(len, sizeof(this->transmitBuffer))};
