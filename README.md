@@ -110,6 +110,8 @@ Registers the BLE UART service with ArduinoBLE, and sets it as the one service w
 
 This requires ArduinoBLE to be initialized beforehand. Afterwards, you must also tell ArduinoBLE to start actually broadcasting, using `BLE.advertise()`. For a helper function that does everything ArduinoBLE-related for you, see `HardwareBLESerial::beginAndSetupBLE`.
 
+Note (2023,Thijs): HardwareBLESerialHost does not have a begin() function (only beginAndSetupBLE()). This may change in the future, not sure.
+
 ### `void HardwareBLESerial::poll()`
 
 Performs internal BLE-related housekeeping tasks. Must be called regularly to ensure BLE state is kept up to date.
@@ -164,35 +166,9 @@ Copies the next line available for reading into `buffer` (or the first `bufferSi
 
 Returns the number of characters copied from the line, so between 0 and `bufferSize - 1`. If there was no next line, then consider that as 0 characters being copied.
 
-### `size_t HardwareBLESerial::print(const char *str)`, `size_t HardwareBLESerial::println(const char *str)`
+### `size_t HardwareBLESerial::print()`, `size_t HardwareBLESerial::println()`
 
-Writes a null-terminated string `str` to the transmit buffer, where it'll queue up until the buffer is flushed (usually within 100 milliseconds).
-
-Returns the number of bytes that were sent to the BLE central device (0 if there is no BLE central device connected).
-
-### `size_t HardwareBLESerial::print(char value)`, `size_t HardwareBLESerial::println(char value)`
-
-Writes a single char `value` to the transmit buffer, where it'll queue up until the buffer is flushed (usually within 100 milliseconds).
-
-Returns the number of bytes that were sent to the BLE central device (0 if there is no BLE central device connected, 1 if there is a BLE central device connected).
-
-### `size_t HardwareBLESerial::print(int64_t value)`, `size_t HardwareBLESerial::println(int64_t value)`
-
-Writes a single signed 64-bit integer `value` to the transmit buffer, formatted as a decimal number, where it'll queue up until the buffer is flushed (usually within 100 milliseconds).
-
-Returns the number of bytes that were sent to the BLE central device (0 if there is no BLE central device connected).
-
-### `size_t HardwareBLESerial::print(uint64_t value)`, `size_t HardwareBLESerial::println(uint64_t value)`
-
-Writes a single unsigned 64-bit integer `value` to the transmit buffer, formatted as a non-negative decimal number, where it'll queue up until the buffer is flushed (usually within 100 milliseconds).
-
-Returns the number of bytes that were sent to the BLE central device (0 if there is no BLE central device connected).
-
-### `size_t HardwareBLESerial::print(double value)`, `size_t HardwareBLESerial::println(double value)`
-
-Writes a single double `value` to the transmit buffer, formatted as a decimal format floating point number (i.e., no exponents), where it'll queue up until the buffer is flushed (usually within 100 milliseconds).
-
-Returns the number of bytes that were sent to the BLE central device (0 if there is no BLE central device connected).
+default arduino Print class is implemented
 
 ### `if (HardwareBLESerial) { ... }`
 
@@ -206,6 +182,15 @@ while (!bleSerial) {
   delay(100); // on Mbed-based Arduino boards, delay() makes the board enter a low-power sleep mode
 }
 ```
+
+### `HardwareBLESerialHost &bleSerial = HardwareBLESerialHost::getInstance()`
+
+The `HardwareBLESerialHost` class is a singleton, so there can be at most 1 instance of this class (because a device can only have 1 UART service).
+
+The `getInstance` method returns a reference to this singular instance of `HardwareBLESerialHost`.
+
+The 'host' class was added in 2023 (by some weirdo on the internet), to act as a BLE central and communicate with other microcontrollers. It automatically searches for devices and connects to the first one it finds (for now?). See SerialPassthrough example sketch for implementation.
+
 
 Resources
 ---------

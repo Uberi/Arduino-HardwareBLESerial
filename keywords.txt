@@ -1,22 +1,26 @@
 # Datatypes (KEYWORD1)
-HardwareBLESerial KEYWORD1
+HardwareBLESerial     KEYWORD1
+HardwareBLESerialHost KEYWORD1
 
 # Methods and Functions (KEYWORD2)
-getInstance KEYWORD2
+getInstance      KEYWORD2
 beginAndSetupBLE KEYWORD2
-begin          KEYWORD2
-poll           KEYWORD2
-end            KEYWORD2
-available      KEYWORD2
-peek           KEYWORD2
-read           KEYWORD2
-write          KEYWORD2
-flush          KEYWORD2
-availableLines KEYWORD2
-peekLine       KEYWORD2
-readLine       KEYWORD2
-print          KEYWORD2
-println        KEYWORD2
+begin            KEYWORD2
+poll             KEYWORD2
+end              KEYWORD2
+available        KEYWORD2
+peek             KEYWORD2
+read             KEYWORD2
+write            KEYWORD2
+flush            KEYWORD2
+availableLines   KEYWORD2
+peekLine         KEYWORD2
+readLine         KEYWORD2
+print            KEYWORD2
+println          KEYWORD2
 
 # Constants (LITERAL1)
-BLE_SERIAL_RECEIVE_BUFFER_SIZE LITERAL1
+BLE_SERIAL_RECEIVE_BUFFER_SIZE  LITERAL1
+uartService_UUID                LITERAL1
+receiveCharacteristic_UUID      LITERAL1
+transmitCharacteristic_UUID     LITERAL1
